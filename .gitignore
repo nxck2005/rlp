@@ -208,3 +208,5 @@ __marimo__/
 
 # ignore training and other logs
 logs/
+# ignore trained model weights (bloated! generate them yourself, theyre not GPT-size)
+models/
