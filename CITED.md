@@ -13,3 +13,5 @@ Gymnasium defines the standard API for interacting with a MDP. It enforces a str
 - Can wrap environments to preprocess data.
 
 This will be our base module for doing RL work. This will enable reproducible results and interop for different environments.
+
+Result from cur train: While the curriculum accelerated learning in intermediate tasks (Stage 2), it caused policy entrapment in the final stage, leading to failure, whereas the baseline successfully converged.
