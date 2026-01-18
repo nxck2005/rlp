@@ -25,6 +25,15 @@ This methodology implements a three-stage curriculum, where the agent's learned 
 
 ## Installation and Setup
 
+### Recommended Environment
+It is highly recommended to utilize a dedicated Windows Subsystem for Linux (WSL) environment. A WSL distribution running Ubuntu with CUDA drivers properly configured will provide the best development and execution experience for this project.
+
+Right now, the trainers are set up to use CPU as MlpPolicy is being utilised, but for larger, general tasks in the future we'll switch to CNN, for which a proper CUDA setup will help with GPU utilization.
+
+Detailed guidance on setting up WSL2 and with Ubuntu and CUDA can be found in the official NVIDIA documentation:
+[NVIDIA CUDA on WSL User Guide](https://docs.nvidia.com/cuda/wsl-user-guide/index.html)
+
+
 This project leverages `uv` for efficient dependency management. Alternatively, standard `pip` installation is supported.
 
 1.  **Repository Cloning:**
