@@ -10,13 +10,13 @@ os.makedirs(models_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
 print("Starting baseline training..")
-env = gym.make("MiniGrid-DoorKey-5x5-v0", render_mode="rgb_array")
+env = gym.make("MiniGrid-DoorKey-8x8-v0", render_mode="rgb_array")
 env = ImgObsWrapper(env)
 
 model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=log_dir, device="cpu")
 
-# We give it the SAME total time (180k steps)
-model.learn(total_timesteps=180000, tb_log_name="Baseline_NoCurriculum")
+# We give it the SAME total time (300k steps)
+model.learn(total_timesteps=300000, tb_log_name="Baseline_NoCurriculum")
 
 model.save(f"{models_dir}/baseline_model")
 env.close()
