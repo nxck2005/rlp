@@ -210,3 +210,5 @@ __marimo__/
 logs/
 # ignore trained model weights (bloated! generate them yourself, theyre not GPT-size)
 models/
+
+GEMINI.md
