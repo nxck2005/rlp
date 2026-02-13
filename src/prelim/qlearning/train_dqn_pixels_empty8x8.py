@@ -17,44 +17,30 @@ def train():
     os.makedirs(MODELS_DIR, exist_ok=True)
     os.makedirs(LOG_DIR, exist_ok=True)
 
-    # 1. Create the environment
-    # FourRooms: A classic maze with 4 connected rooms.
     env = gym.make("MiniGrid-Empty-8x8-v0", render_mode="rgb_array")
-    
-    # 2. Wrap it to output PIXELS instead of grid numbers
-    # RGBImgPartialObsWrapper renders the 7x7 view as a tile-based image.
-    # Default tile_size=8 -> 7x8 = 56x56 pixel image.
     env = RGBImgPartialObsWrapper(env, tile_size=8)
-    
-    # 3. Wrap it to keep channel-first structure for PyTorch (C, H, W)
     env = ImgObsWrapper(env)
 
     print(f"Observation Space: {env.observation_space.shape}")
-    # Expected: (3, 56, 56)
 
-    # 4. Standard DQN with Standard CnnPolicy
-    # No custom features_extractor_class needed!
     model = DQN(
         "CnnPolicy",
         env,
         verbose=1,
         tensorboard_log=LOG_DIR,
-        device="cuda",  # Use your RTX 4060
+        device="cuda",
         buffer_size=100000,
         learning_rate=1e-3,
         exploration_fraction=0.1,
         exploration_final_eps=0.05,
-        target_update_interval=1000, # Update target network every 1000 steps
+        target_update_interval=1000,
         train_freq=4,
         gradient_steps=1,
     )
 
-    # 5. Train
-    # 100k steps is a good start for FourRooms with pixels
     print("Training for 500,000 steps...")
     model.learn(total_timesteps=500000, tb_log_name="DQN_Pixels_Empty8x8")
-    
-    # 6. Save
+
     save_path = os.path.join(MODELS_DIR, "Empty8x8_Pixel_DQN")
     model.save(save_path)
     print(f"Model saved to {save_path}")

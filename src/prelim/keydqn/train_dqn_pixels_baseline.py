@@ -7,16 +7,24 @@ import sys
 import time
 import torch as th
 
-# Directories - relative to this script
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# New models directory: src/models/keydqn
-MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR))), "src", "models", "keydqn")
-# New logs directory: src/logs/keydqn
-LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR))), "src", "logs", "keydqn")
+# HYPER PARAMS
+EXPLORATION_FRACTION = 0.5
+FINAL_EXPLORATION_DECAY = 0.1
+ITERATIONS = 200_000
+LEARNING_RATE = 0.0002
+WATCH_EPISODES = 10
+MEM_USED = 400_000
+# Collect x steps and then update gradients y times.
+WEIGHT_COLLECT_FREQ = 4
+GRADIENT_UPDATE_FREQ = 2
+START_LEARNING_AT_STEP = 5000
+# great amt of vram so no problems
+BATCH_SIZE = 128
 
-# Environment ID
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR))), "src", "models", "keydqn")
+LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR))), "src", "logs", "keydqn")
 ENV_ID = "MiniGrid-DoorKey-5x5-v0"
-# Model Name
 MODEL_NAME = "DQN_Pixels_DoorKey5x5_Baseline"
 
 def train():
@@ -24,34 +32,32 @@ def train():
     os.makedirs(MODELS_DIR, exist_ok=True)
     os.makedirs(LOG_DIR, exist_ok=True)
 
-    # 1. Create the environment
     env = gym.make(ENV_ID, render_mode="rgb_array")
-    
-    # 2. Wrap it to output PIXELS (56x56x3)
     env = RGBImgPartialObsWrapper(env, tile_size=8)
     env = ImgObsWrapper(env)
 
     print(f"Observation Space: {env.observation_space.shape}")
 
-    # 3. Standard DQN with Standard CnnPolicy
     model = DQN(
         "CnnPolicy",
         env,
         verbose=1,
         tensorboard_log=LOG_DIR,
         device="cuda",
-        buffer_size=100000,
-        learning_rate=1e-4,
-        exploration_fraction=0.2, # Slightly higher exploration for key/door
-        exploration_final_eps=0.05,
+        buffer_size=MEM_USED,
+        learning_rate=LEARNING_RATE,
+        exploration_fraction=EXPLORATION_FRACTION,
+        exploration_final_eps=FINAL_EXPLORATION_DECAY,
         target_update_interval=1000,
-        train_freq=4,
-        gradient_steps=1,
+        train_freq=WEIGHT_COLLECT_FREQ,
+        gradient_steps=GRADIENT_UPDATE_FREQ,
+        learning_starts=START_LEARNING_AT_STEP,
+        batch_size=BATCH_SIZE,
     )
 
     # 4. Train
-    print("Training for 500,000 steps...")
-    model.learn(total_timesteps=500000, tb_log_name=MODEL_NAME)
+    print(f"Training for {ITERATIONS} steps...")
+    model.learn(total_timesteps=ITERATIONS, tb_log_name=MODEL_NAME)
     
     # 5. Save
     save_path = os.path.join(MODELS_DIR, MODEL_NAME)
@@ -61,7 +67,6 @@ def train():
 
 def watch(max_steps_per_episode=None):
     print(f"--- WATCHING DQN PIXEL AGENT ({ENV_ID}) ---")
-    
     model_path = os.path.join(MODELS_DIR, MODEL_NAME)
     if not os.path.exists(model_path + ".zip"):
         print(f"Model not found at {model_path}.zip")
@@ -79,7 +84,7 @@ def watch(max_steps_per_episode=None):
 
     model = DQN.load(model_path, env=env)
 
-    for ep in range(5):
+    for ep in range(10):
         obs, _ = env.reset()
         done = False
         truncated = False
