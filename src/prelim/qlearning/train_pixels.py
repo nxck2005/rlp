@@ -41,7 +41,7 @@ def train():
         tensorboard_log=LOG_DIR,
         device="cuda",  # Use your RTX 4060
         buffer_size=100000,
-        learning_rate=1e-4,
+        learning_rate=1e-3,
         exploration_fraction=0.1,
         exploration_final_eps=0.05,
         target_update_interval=1000, # Update target network every 1000 steps

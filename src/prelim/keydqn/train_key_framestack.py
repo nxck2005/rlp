@@ -21,23 +21,20 @@ def train():
     os.makedirs(MODELS_DIR, exist_ok=True)
     os.makedirs(LOG_DIR, exist_ok=True)
 
-    # 1. Create the environment
-    # We must use a lambda to delay creation for DummyVecEnv
+    # delay creation for DummyVecEnv
     def make_env():
         env = gym.make(ENV_ID, render_mode="rgb_array")
-        # 2. Wrap it to output PIXELS (56x56x3)
         env = RGBImgPartialObsWrapper(env, tile_size=8)
         env = ImgObsWrapper(env)
         return env
 
-    # 3. Vectorize and Stack Frames
+    #  Vectorize and Stack Frames
     env = DummyVecEnv([make_env])
     # Stack 4 frames -> Input shape becomes (4*3, 56, 56) = (12, 56, 56)
     env = VecFrameStack(env, n_stack=4)
 
     print(f"Observation Space: {env.observation_space.shape}")
 
-    # 4. Standard DQN with Standard CnnPolicy
     # The policy automatically handles the larger input channels (12 instead of 3)
     model = DQN(
         "CnnPolicy",
@@ -54,11 +51,9 @@ def train():
         gradient_steps=1,
     )
 
-    # 5. Train
     print("Training for 500,000 steps...")
     model.learn(total_timesteps=500000, tb_log_name=MODEL_NAME)
     
-    # 6. Save
     save_path = os.path.join(MODELS_DIR, MODEL_NAME)
     model.save(save_path)
     print(f"Model saved to {save_path}")
@@ -84,7 +79,7 @@ def watch(max_steps_per_episode=None):
 
     model = DQN.load(model_path, env=env)
 
-    for ep in range(5):
+    for ep in range(20):
         obs = env.reset() # VecEnv reset returns only obs
         done = False
         total_reward = 0

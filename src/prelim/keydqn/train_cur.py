@@ -90,7 +90,7 @@ def watch(stage, max_steps_per_episode=None):
 
     model = DQN.load(model_path, env=env)
 
-    for ep in range(5):
+    for ep in range(10):
         obs, _ = env.reset()
         done = False
         truncated = False
