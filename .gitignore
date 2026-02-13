@@ -207,8 +207,8 @@ marimo/_lsp/
 __marimo__/
 
 # ignore training and other logs
-logs/
+*logs/
 # ignore trained model weights (bloated! generate them yourself, theyre not GPT-size)
 models/
-
+*.zip
 GEMINI.md
