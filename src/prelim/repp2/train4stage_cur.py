@@ -1,3 +1,5 @@
+from turtle import delay
+
 import gymnasium as gym
 import os
 import torch
@@ -8,16 +10,14 @@ from stable_baselines3.common.vec_env import SubprocVecEnv
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-LOG_DIR = os.path.join(BASE_DIR, "logs/rppo_fast_track_LR0.001/")
+LOG_DIR = os.path.join(BASE_DIR, "logs/rppo4Stage/")
 os.makedirs(LOG_DIR, exist_ok=True)
 
 STAGES = [
-    {"id": "MiniGrid-Empty-8x8-v0",    "steps": 30000,  "name": "1_nav"},
-    {"id": "MiniGrid-DoorKey-5x5-v0",  "steps": 50000,  "name": "2_interact"},
-    {"id": "MiniGrid-DoorKey-8x8-v0",  "steps": 100000, "name": "3_target"},
-    {"id": "MiniGrid-MultiRoom-N2-S4-v0", "steps": 150000, "name": "4_sequence"},
-    {"id": "MiniGrid-MemoryS7-v0",     "steps": 200000, "name": "5_memory"},
-    {"id": "MiniGrid-LavaGapS7-v0",    "steps": 150000, "name": "6_precision"}
+    {"id": "MiniGrid-Empty-8x8-v0",      "steps": 50000,   "name": "1_nav"},
+    {"id": "MiniGrid-DoorKey-5x5-v0",    "steps": 200000,  "name": "2_interact"},
+    {"id": "MiniGrid-DoorKey-8x8-v0",    "steps": 500000,  "name": "3_target"},
+    {"id": "MiniGrid-MultiRoom-N2-S4-v0", "steps": 1000000, "name": "4_sequence"}
 ]
 
 def make_env(env_id, rank):
@@ -41,10 +41,14 @@ if __name__ == "__main__":
 
         if model is None:
             model = RecurrentPPO(
+                
                 "MlpLstmPolicy", 
                 envs, 
                 learning_rate=0.0003,
-                n_steps=128,
+                n_steps=512,        
+                batch_size=128,     
+                ent_coef=0.05,      
+                gae_lambda=0.95,    
                 verbose=1,
                 tensorboard_log=LOG_DIR,
                 device="cuda"
@@ -60,4 +64,4 @@ if __name__ == "__main__":
         
         envs.close()
 
-    print("\nFast-Track Training Complete.")
+    print("\n4 Stage Training Complete.")
