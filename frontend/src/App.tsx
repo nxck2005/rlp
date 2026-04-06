@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Brain, Zap, History, Play, Plus, ArrowRight } from 'lucide-react'
+import { Brain, Zap, History, Play, ArrowRight } from 'lucide-react'
 import ModelWatcher from './components/ModelWatcher'
 
 const MODELS = [
@@ -130,10 +130,10 @@ function App() {
 
         {/* Footer */}
         <footer className="mt-32 pt-12 border-t border-border flex justify-between items-center text-[10px] uppercase tracking-[0.2em] text-sub">
-          <span>Observed via Gymnasium & Stable Baselines</span>
+          <span>Ran on React 19 and Vite</span>
           <div className="flex gap-8">
-            <span>Latent Space Explorer</span>
-            <span>2026 Edition</span>
+            <span>Made for CSE4037</span>
+            <span>J Component</span>
           </div>
         </footer>
       </div>

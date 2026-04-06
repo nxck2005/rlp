@@ -72,5 +72,12 @@ Many training scripts include a `--watch` flag or have a dedicated `watch_*.py` 
 *   Example for PPO: `uv run python prelim/ppo/watch_ppo.py`
 *   Example for PPO Flat Curriculum: `uv run python prelim/ppoflat/watch_curriculum.py <stage_number>`
 
+For webapp:
+
+* In rlp/src: ```uv run uvicorn api.server:app --host 0.0.0.0 --port 8000 ```
+* In rlp/frontend : ```npm run dev```
+
+should be ran in parallel.
+
 ---
 Detailed theoretical notes, parameter explanations, and source citations can be found in `CITED.md` and `PARAMS.md`.
