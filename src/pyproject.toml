@@ -1,12 +1,13 @@
 [project]
 name = "src"
 version = "0.1.0"
-description = "Add your description here"
+description = "RL project with GPU-enabled Stable Baselines3"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "gymnasium>=1.2.3",
     "minigrid>=3.0.0",
+    "sb3-contrib>=2.7.1",
     "shimmy>=2.0.0",
     "stable-baselines3>=2.7.1",
     "sb3-contrib>=2.7.1",
@@ -14,4 +15,20 @@ dependencies = [
     "uvicorn>=0.30.0",
     "python-multipart>=0.0.9",
     "websockets>=16.0",
+    "stable-baselines3[extra]>=2.7.1",
+    "tensorboard>=2.20.0",
+    "torch",
+    "torchvision",
+    "torchaudio",
+    "setuptools<82.0.0",
 ]
+
+[[tool.uv.index]]
+name = "pytorch-cuda"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cuda" }
+torchvision = { index = "pytorch-cuda" }
+torchaudio = { index = "pytorch-cuda" }
