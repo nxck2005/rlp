@@ -9,4 +9,9 @@ dependencies = [
     "minigrid>=3.0.0",
     "shimmy>=2.0.0",
     "stable-baselines3>=2.7.1",
+    "sb3-contrib>=2.7.1",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "python-multipart>=0.0.9",
+    "websockets>=16.0",
 ]
