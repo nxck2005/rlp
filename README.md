@@ -1,83 +1,67 @@
-# rlp: Reinforcement Learning Project (CSE4037)
+# rlp: Reinforcement Learning Laboratory (CSE4037)
 
-Implementation and study of **Curriculum Learning** versus **Baseline Training** in Reinforcement Learning using `MiniGrid`.
+A comprehensive study of **Curriculum Learning** versus **Baseline Training** within the `MiniGrid` ecosystem. This project implements and visualises various RL architectures, ranging from standard DQNs to advanced parallelised Recurrent PPO agents.
 
-## Project Overview
+## Project Taxonomy
 
-The objective is to evaluate the efficacy of staged training on progressively complex tasks. Our core experiments focus on the `MiniGrid-DoorKey-5x5-v0` environment, where an agent must navigate a grid, find a key, and unlock a door.
+The laboratory is divided into five core research categories:
 
-### Key Research Findings
-*   **POMDP Nature:** `MiniGrid` is partially observable. Standard reactive agents (like MLP policies without memory) often struggle with sequences like "get key, then find door."
-*   **FrameStacking Success:** Adding FrameStack (short-term temporal memory) to DQN agents significantly improved performance on `DoorKey-5x5-v0`.
-*   **DQN vs. PPO:** 
-    *   **DQN (Pixels):** Faced instability and catastrophic forgetting due to off-policy buffer poisoning in sparse reward settings.
-    *   **PPO (Symbolic):** On-policy architecture with gradient clipping proved much more stable and converged faster, especially when using symbolic (`FlatObsWrapper`) observations.
-*   **Policy Entrapment:** Some curriculum designs (Stage 1 Empty -> Stage 2 DistShift -> Stage 3 DoorKey) led to policy entrapment in the final stage, while baseline training eventually converged.
+1.  **DQN Architectures:** Pixel-based Deep Q-Networks exploring frame stacking and custom CNN kernels for sparse observations.
+2.  **PPO Visual:** Pixel-based Proximal Policy Optimization focused on on-policy stability in 8x8 environments.
+3.  **PPO Symbolic:** High-speed logical extraction using `FlatObsWrapper` for rapid convergence.
+4.  **Recurrent PPO (RPPO):** LSTM-driven agents designed to solve POMDP (Partially Observable) challenges by maintaining temporal memory.
+5.  **REPP2 Advanced:** Our peak architecture—parallelised Recurrent PPO using `SubprocVecEnv` for multi-stage sequence learning across complex room boundaries.
 
-## Experimental Design
+## Key Research Findings
 
-### 1. PPO Experiments (Symbolic Observations)
-Located in `src/prelim/ppo/` and `src/prelim/ppoflat/`.
-*   **Observation:** 1D symbolic array (`FlatObsWrapper`).
-*   **Policy:** `MlpPolicy`.
-*   **Focus:** Stable convergence and weight transfer between stages.
+*   **Memory as a Necessity:** Standard MLP policies suffer from "goldfish memory." LSTMs are critical for 8x8 maps to remember the location of keys/doors when they exit the agent's 7x7 field of view.
+*   **Symbolic vs. Pixel:** Symbolic observations (object IDs) converge orders of magnitude faster than raw RGB pixels by bypassing the visual perception bottleneck.
+*   **Temporal Context:** Frame stacking (4-frame buffer) significantly stabilises DQN performance on vision-based tasks.
+*   **Curriculum Efficiency:** Staged training (e.g., Empty -> DoorKey 5x5 -> DoorKey 8x8) accelerates the discovery of sparse rewards in high-dimensional state spaces.
 
-### 2. DQN Experiments (Pixel-based)
-Located in `src/prelim/keydqn/` and `src/prelim/qlearning/`.
-*   **Observation:** 56x56 RGB image (`RGBImgPartialObsWrapper`).
-*   **Policy:** `CnnPolicy`.
-*   **Specialized:** Includes experiments with **FrameStacking** to provide temporal context.
+## Installation & Setup
 
-## Installation and Setup
+This project uses `uv` for Python and `npm` for the React dashboard.
 
-This project uses `uv` for dependency management.
-
-1.  **Clone the repository:**
-    ```bash
-    git clone <repository_url>
-    cd rlp
-    ```
-2.  **Install dependencies:**
-    ```bash
-    cd src
-    uv sync
-    ```
-
-## Executing Experiments
-
-All commands should be run from the `src/` directory.
-
-### PPO (Proximal Policy Optimization)
-*   **Baseline:** `uv run python prelim/ppo/train_ppo_baseline.py`
-*   **Curriculum:** `uv run python prelim/ppo/train_ppo_curriculum.py`
-*   **Watcher:** `uv run python prelim/ppo/watch_ppo.py`
-
-### DQN (Deep Q-Learning)
-*   **Pixel Baseline:** `uv run python prelim/keydqn/train_dqn_pixels_baseline.py`
-*   **Pixel Curriculum:** `uv run python prelim/keydqn/train_dqn_pixels_curriculum.py`
-*   **FrameStack Baseline:** `uv run python prelim/keydqn/train_dqn_pixels_framestack.py`
-*   **Watch Pixel Agent:** `uv run python prelim/qlearning/watch_dqn_custom_cnn.py`
-
-## Monitoring and Visualization
-
-### TensorBoard
-Monitor training progress (reward curves, loss, etc.):
+### 1. Clone & Python Environment
 ```bash
-cd src
-uv run tensorboard --logdir prelim/logs/
+git clone https://github.com/nxck2005/rlp
+cd rlp/src
+uv sync
 ```
 
-### Watching Trained Agents
-Many training scripts include a `--watch` flag or have a dedicated `watch_*.py` script.
-*   Example for PPO: `uv run python prelim/ppo/watch_ppo.py`
-*   Example for PPO Flat Curriculum: `uv run python prelim/ppoflat/watch_curriculum.py <stage_number>`
+### 2. Frontend Environment
+```bash
+cd rlp/frontend
+npm install
+```
 
-For webapp:
+## Running the Laboratory (Webapp)
 
-* In rlp/src: ```uv run uvicorn api.server:app --host 0.0.0.0 --port 8000 ```
-* In rlp/frontend : ```npm run dev```
+To launch the integrated visualizer, you must run both the backend and frontend in parallel sessions:
 
-should be ran in parallel.
+**Backend (from `rlp/src`):**
+```bash
+uv run uvicorn api.server:app --host 0.0.0.0 --port 8000
+```
+
+**Frontend (from `rlp/frontend`):**
+```bash
+npm run dev
+```
+
+*Dashboard available at: http://localhost:5173*
+
+## Features
+
+### Unified Visualizer Dashboard
+A modern "Laboratory" interface built with React 19 + TypeScript to monitor agent logic in real-time.
+*   **Dual Viewports:** Simultaneously view the Global God-View and the Agent's 7x7 Partial Observation.
+*   **Spatial Analysis (Phase 3):**
+    *   **Dynamic Heatmaps:** Visualise agent occupancy and exploration density layers.
+    *   **Breadcrumb Tracking:** Real-time path tracking to identify navigation loops and efficiency.
+*   **Episode Analysis:** Interactive "Time-Travel" scrubber to step through historical episodes frame-by-frame.
+*   **Policy Telemetry:** Live action distribution charts and rolling success rate metrics.
 
 ---
-Detailed theoretical notes, parameter explanations, and source citations can be found in `CITED.md` and `PARAMS.md`.
+Detailed theoretical notes and parameter explanations can be found in `CITED.md` and `PARAMS.md`.
