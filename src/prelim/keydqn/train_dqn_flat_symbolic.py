@@ -23,10 +23,11 @@ TARGETNET_UPDATE_INTERVAL = 10000
 
 # Directories
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR))), "src", "models", "keydqn_flat")
-LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR))), "src", "logs", "keydqn_flat")
+# Target: rlp/src/models/
+MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(BASE_DIR)), "models")
+LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(BASE_DIR)), "logs", "keydqn_flat")
 ENV_ID = "MiniGrid-DoorKey-5x5-v0"
-MODEL_NAME = "DQN_Flat_DoorKey5x5"
+MODEL_NAME = "dqn_final"
 
 def train():
     print(f"--- STARTING DQN FLAT/SYMBOLIC TRAINING ({ENV_ID}) ---")

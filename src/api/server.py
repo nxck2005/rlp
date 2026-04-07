@@ -29,25 +29,80 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS_DIR = os.path.join(BASE_DIR, "models")
 
 MODEL_CONFIG = {
-    "ppo": {
-        "path": os.path.join(MODELS_DIR, "keyppo_flat/PPO_Flat_DoorKey5x5"),
-        "env": "MiniGrid-DoorKey-5x5-v0",
-        "type": "PPO"
-    },
-    "dqn": {
+    # 1. DQN APPROACHES (Pixel-based)
+    "dqn_baseline": {
         "path": os.path.join(MODELS_DIR, "dqn_final"),
         "env": "MiniGrid-DoorKey-5x5-v0",
-        "type": "DQN"
+        "type": "DQN",
+        "obs_type": "Pixel"
     },
+    "dqn_framestack": {
+        "path": os.path.join(MODELS_DIR, "dqn_framestack"),
+        "env": "MiniGrid-DoorKey-5x5-v0",
+        "type": "DQN",
+        "obs_type": "Pixel"
+    },
+    "dqn_custom_cnn": {
+        "path": os.path.join(MODELS_DIR, "dqn_custom_cnn"),
+        "env": "MiniGrid-DoorKey-5x5-v0",
+        "type": "DQN",
+        "obs_type": "Pixel"
+    },
+    "dqn_curriculum": {
+        "path": os.path.join(MODELS_DIR, "dqn_curriculum"),
+        "env": "MiniGrid-DoorKey-5x5-v0",
+        "type": "DQN",
+        "obs_type": "Pixel"
+    },
+    
+    # 2. PPO VISUAL (Pixel-based)
+    "ppo_baseline": {
+        "path": os.path.join(MODELS_DIR, "baseline/baseline_model"),
+        "env": "MiniGrid-DoorKey-8x8-v0",
+        "type": "PPO",
+        "obs_type": "Pixel"
+    },
+    "ppo_curriculum": {
+        "path": os.path.join(MODELS_DIR, "S3_weights"),
+        "env": "MiniGrid-DoorKey-5x5-v0",
+        "type": "PPO",
+        "obs_type": "Pixel"
+    },
+
+    # 3. PPO SYMBOLIC (Flat/Symbolic-based)
+    "ppo_flat": {
+        "path": os.path.join(MODELS_DIR, "keyppo_flat/PPO_Flat_DoorKey5x5"),
+        "env": "MiniGrid-DoorKey-5x5-v0",
+        "type": "PPO",
+        "obs_type": "Flat"
+    },
+    "ppo_flat_cur": {
+        "path": os.path.join(MODELS_DIR, "ppo_flat_cur"),
+        "env": "MiniGrid-DoorKey-5x5-v0",
+        "type": "PPO",
+        "obs_type": "Flat"
+    },
+
+    # 4. RPPO (RECURRENT - Flat)
     "rppo_baseline": {
         "path": os.path.join(MODELS_DIR, "rppo_baseline/rppo_baseline_final"),
         "env": "MiniGrid-DoorKey-8x8-v0",
-        "type": "RPPO"
+        "type": "RPPO",
+        "obs_type": "Flat"
     },
     "rppo_curriculum": {
         "path": os.path.join(MODELS_DIR, "rppo_cur/rppo_cur_3_target"),
         "env": "MiniGrid-DoorKey-8x8-v0",
-        "type": "RPPO"
+        "type": "RPPO",
+        "obs_type": "Flat"
+    },
+
+    # 5. REPP2 (ADVANCED - Flat)
+    "repp2_4stage": {
+        "path": os.path.join(MODELS_DIR, "repp2/fast_4_sequence"),
+        "env": "MiniGrid-MultiRoom-N2-S4-v0",
+        "type": "RPPO",
+        "obs_type": "Flat"
     }
 }
 
@@ -83,18 +138,22 @@ async def websocket_endpoint(websocket: WebSocket, model_id: str):
         watcher = HeadlessWatcher(
             env_id=config["env"],
             model_path=full_path,
-            model_type=config["type"]
+            model_type=config["type"],
+            obs_type=config["obs_type"]
         )
         logger.info(f"Watcher initialized for {model_id}. Starting stream...")
         
         while True:
             # Step the agent
-            frame, agent_view, action, reward, done, reset, final_reward, steps = watcher.step()
+            frame, agent_view, full_grid, agent_pos, agent_dir, action, reward, done, reset, final_reward, steps = watcher.step()
             
             # Prepare data to send
             payload = {
                 "frame": watcher.get_frame_base64(frame),
                 "agent_view": agent_view.tolist(), # 7x7x3
+                "full_grid": full_grid.tolist(), # WxHx3
+                "agent_pos": [int(agent_pos[0]), int(agent_pos[1])],
+                "agent_dir": int(agent_dir),
                 "action": int(action),
                 "reward": float(reward),
                 "done": bool(done),

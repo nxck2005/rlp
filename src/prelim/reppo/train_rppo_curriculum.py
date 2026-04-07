@@ -51,7 +51,13 @@ for stage in STAGES:
     model.learn(total_timesteps=stage["steps"], reset_num_timesteps=False)
     
     # Save intermediate progress
-    save_path = os.path.join(BASE_DIR, f"models/rppo_cur_{stage['name']}")
+    SRC_DIR = os.path.dirname(os.path.dirname(BASE_DIR))
+    if stage["name"] == "3_target":
+        save_path = os.path.join(SRC_DIR, f"models/rppo_cur/rppo_cur_{stage['name']}")
+    else:
+        save_path = os.path.join(SRC_DIR, f"models/rppo_cur_temp/rppo_cur_{stage['name']}")
+    
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
     model.save(save_path)
 
 print("\nCurriculum Training Complete on CUDA.")

@@ -8,8 +8,9 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 # 1. Setup Directories
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-LOG_DIR = os.path.join(BASE_DIR, "logs/rppo_baseline/")
-MODEL_PATH = os.path.join(BASE_DIR, "models/rppo_baseline_final")
+SRC_DIR = os.path.dirname(os.path.dirname(BASE_DIR))
+LOG_DIR = os.path.join(SRC_DIR, "logs/rppo_baseline/")
+MODEL_PATH = os.path.join(SRC_DIR, "models/rppo_baseline/rppo_baseline_final")
 os.makedirs(LOG_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
 

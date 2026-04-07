@@ -21,6 +21,9 @@ interface TelemetryData {
   done: boolean;
   reset: boolean;
   agent_view?: number[][][]; // 7x7x3
+  full_grid?: number[][][]; // WxHx3
+  agent_pos?: [number, number];
+  agent_dir?: number;
   final_reward?: number;
   steps?: number;
 }
@@ -28,6 +31,9 @@ interface TelemetryData {
 interface StepData {
   frame: string;
   agent_view: number[][][];
+  full_grid: number[][][];
+  agent_pos: [number, number];
+  agent_dir: number;
   action: number;
   reward: number;
   done: boolean;
@@ -99,6 +105,72 @@ const AgentEye: React.FC<{ grid?: number[][][] }> = ({ grid }) => {
   );
 };
 
+const SpatialOverlay: React.FC<{ 
+  path: [number, number][], 
+  heatmap: Record<string, number>, 
+  gridSize: [number, number],
+  visible: { path: boolean, heatmap: boolean }
+}> = ({ path, heatmap, gridSize, visible }) => {
+  if (!gridSize[0]) return null;
+  const [W, H] = gridSize;
+  
+  // Find max value in heatmap for normalization
+  const maxHeat = Math.max(...Object.values(heatmap), 1);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none grid" style={{ 
+      gridTemplateColumns: `repeat(${W}, 1fr)`,
+      gridTemplateRows: `repeat(${H}, 1fr)`,
+      padding: '16px' // Match the padding of the container
+    }}>
+      {/* Heatmap Layer */}
+      {visible.heatmap && Array.from({ length: W * H }).map((_, i) => {
+        const x = i % W;
+        const y = Math.floor(i / W);
+        const count = heatmap[`${x},${y}`] || 0;
+        const opacity = (count / maxHeat) * 0.6;
+        return (
+          <div 
+            key={`heat-${i}`} 
+            style={{ backgroundColor: `rgba(255, 255, 255, ${opacity})` }}
+            className="w-full h-full border border-white/5"
+          />
+        );
+      })}
+
+      {/* Path / Breadcrumb Layer (SVG Overlay) */}
+      {visible.path && (
+        <svg 
+          className="absolute inset-0 w-full h-full" 
+          viewBox={`0 0 ${W} ${H}`} 
+          preserveAspectRatio="none"
+          style={{ padding: '16px' }}
+        >
+          {path.length > 1 && (
+            <polyline
+              points={path.map(([x, y]) => `${x + 0.5},${y + 0.5}`).join(' ')}
+              fill="none"
+              stroke="white"
+              strokeWidth="0.05"
+              strokeLinejoin="round"
+              strokeDasharray="0.1 0.1"
+              className="opacity-50"
+            />
+          )}
+          {path.length > 0 && (
+            <circle 
+              cx={path[path.length-1][0] + 0.5} 
+              cy={path[path.length-1][1] + 0.5} 
+              r="0.1" 
+              fill="white" 
+            />
+          )}
+        </svg>
+      )}
+    </div>
+  );
+};
+
 const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
   const [frame, setFrame] = useState<string | null>(null);
   const [telemetry, setTelemetry] = useState<TelemetryData | null>(null);
@@ -112,6 +184,13 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
   const [currentEpisodeIndex, setCurrentEpisodeIndex] = useState(0);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [currentRecordingSteps, setCurrentRecordingSteps] = useState<StepData[]>([]);
+
+  // Spatial Analysis State
+  const [path, setPath] = useState<[number, number][]>([]);
+  const [heatmap, setHeatmap] = useState<Record<string, number>>({});
+  const [showPath, setShowPath] = useState(true);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [gridSize, setGridSize] = useState<[number, number]>([0, 0]);
 
   const ws = useRef<WebSocket | null>(null);
 
@@ -128,10 +207,17 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
         const step: StepData = {
           frame: data.frame,
           agent_view: data.agent_view,
+          full_grid: data.full_grid,
+          agent_pos: data.agent_pos,
+          agent_dir: data.agent_dir,
           action: data.action,
           reward: data.reward,
           done: data.done
         };
+
+        if (gridSize[0] === 0 && data.full_grid) {
+          setGridSize([data.full_grid.length, data.full_grid[0].length]);
+        }
 
         setIsLive(currentIsLive => {
           if (currentIsLive) {
@@ -139,8 +225,15 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
             setTelemetry({
               action: data.action, reward: data.reward, done: data.done,
               reset: data.reset, agent_view: data.agent_view,
+              full_grid: data.full_grid, agent_pos: data.agent_pos,
+              agent_dir: data.agent_dir,
               final_reward: data.final_reward, steps: data.steps
             });
+            
+            // Update live spatial data
+            setPath(prev => [...prev, data.agent_pos]);
+            const posKey = `${data.agent_pos[0]},${data.agent_pos[1]}`;
+            setHeatmap(prev => ({ ...prev, [posKey]: (prev[posKey] || 0) + 1 }));
           }
           return currentIsLive;
         });
@@ -154,6 +247,7 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
             }, ...prevH].slice(0, 10));
             setEpisodeCount(c => c + 1);
             if (data.final_reward > 0) setSuccessCount(s => s + 1);
+            setPath([]); // Reset path for new episode
             return [];
           }
           return nextSteps;
@@ -173,13 +267,19 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
 
   useEffect(() => {
     if (!isLive && history[currentEpisodeIndex]) {
-      const step = history[currentEpisodeIndex].steps[currentStepIndex];
+      const episode = history[currentEpisodeIndex];
+      const step = episode.steps[currentStepIndex];
       if (step) {
         setFrame(step.frame);
         setTelemetry({
           action: step.action, reward: step.reward, done: step.done,
-          reset: false, agent_view: step.agent_view
+          reset: false, agent_view: step.agent_view,
+          full_grid: step.full_grid, agent_pos: step.agent_pos,
+          agent_dir: step.agent_dir
         });
+        setGridSize([step.full_grid.length, step.full_grid[0].length]);
+        // Show path up to current step in replay
+        setPath(episode.steps.slice(0, currentStepIndex + 1).map(s => s.agent_pos));
       }
     }
   }, [isLive, currentEpisodeIndex, currentStepIndex, history]);
@@ -193,7 +293,7 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
         <div className="flex justify-between items-end border-b border-border pb-4">
           <div className="flex bg-accent-bg p-1 rounded">
             <button 
-              onClick={() => setIsLive(true)}
+              onClick={() => { setIsLive(true); setPath([]); }}
               className={`px-4 py-1 text-[10px] font-bold tracking-widest transition-all ${isLive ? 'bg-fg text-bg' : 'text-sub hover:text-fg'}`}
             >LIVE</button>
             <button 
@@ -201,6 +301,18 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
               className={`px-4 py-1 text-[10px] font-bold tracking-widest transition-all ${!isLive ? 'bg-fg text-bg' : 'text-sub hover:text-fg'}`}
             >REPLAY</button>
           </div>
+          
+          <div className="flex gap-4 items-center">
+            <button 
+              onClick={() => setShowPath(!showPath)}
+              className={`text-[10px] font-bold tracking-widest px-3 py-1 border transition-all ${showPath ? 'bg-fg text-bg border-fg' : 'text-sub border-border hover:border-sub'}`}
+            >PATH</button>
+            <button 
+              onClick={() => setShowHeatmap(!showHeatmap)}
+              className={`text-[10px] font-bold tracking-widest px-3 py-1 border transition-all ${showHeatmap ? 'bg-fg text-bg border-fg' : 'text-sub border-border hover:border-sub'}`}
+            >HEATMAP</button>
+          </div>
+
           <div className="text-right">
             <span className="text-[10px] text-sub uppercase tracking-widest block mb-1">Convergence</span>
             <span className="text-xl font-bold font-heading">{successRate}%</span>
@@ -209,7 +321,15 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
 
         <div className="relative aspect-square border border-border bg-bg p-4 group">
           {frame ? (
-            <img src={`data:image/jpeg;base64,${frame}`} className="w-full h-full object-contain pixelated transition-opacity duration-500" alt="Stream" />
+            <>
+              <img src={`data:image/jpeg;base64,${frame}`} className="w-full h-full object-contain pixelated transition-opacity duration-500" alt="Stream" />
+              <SpatialOverlay 
+                path={path} 
+                heatmap={heatmap} 
+                gridSize={gridSize} 
+                visible={{ path: showPath, heatmap: showHeatmap }} 
+              />
+            </>
           ) : (
             <div className="w-full h-full flex items-center justify-center text-xs text-sub uppercase tracking-widest animate-pulse">Initializing Latent Stream...</div>
           )}
