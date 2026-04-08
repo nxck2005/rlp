@@ -6,6 +6,7 @@ import os
 from api.watcher import HeadlessWatcher
 
 import logging
+from api.metrics import extract_metrics, get_log_dir_for_model
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -112,6 +113,19 @@ MODEL_CONFIG = {
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+@app.get("/api/metrics/{model_id}")
+async def get_metrics(model_id: str):
+    logger.info(f"Metrics request for model: {model_id}")
+    
+    # Use helper to find correct log dir
+    log_dir = get_log_dir_for_model(model_id, BASE_DIR, MODELS_DIR)
+    
+    if not log_dir or not os.path.exists(log_dir):
+        return {"error": f"Log directory not found for {model_id}"}
+    
+    metrics = extract_metrics(log_dir)
+    return metrics
 
 @app.websocket("/ws/{model_id}")
 async def websocket_endpoint(websocket: WebSocket, model_id: str):

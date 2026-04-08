@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Activity, Target, BarChart3, AlertCircle, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   BarChart,
@@ -7,7 +7,10 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  Cell
+  Cell,
+  AreaChart,
+  Area,
+  CartesianGrid
 } from 'recharts';
 
 interface ModelWatcherProps {
@@ -45,6 +48,102 @@ interface EpisodeRecord {
   finalReward: number;
   totalSteps: number;
 }
+
+const MetricChart: React.FC<{ title: string, data: any[], color: string }> = ({ title, data, color }) => {
+  if (!data || data.length === 0) return (
+    <div className="h-48 border border-border flex flex-col items-center justify-center p-4">
+      <span className="text-[10px] text-sub uppercase tracking-widest mb-2">{title}</span>
+      <span className="text-[10px] text-sub/50">NO DATA AVAILABLE</span>
+    </div>
+  );
+
+  return (
+    <div className="h-64 border border-border p-4 flex flex-col">
+      <span className="text-[10px] text-sub uppercase tracking-widest mb-4">{title}</span>
+      <div className="flex-1 w-full h-full min-h-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id={`grad-${title}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={color} stopOpacity={0.1}/>
+                <stop offset="95%" stopColor={color} stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+            <XAxis 
+              dataKey="step" 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{fontSize: 9, fill: 'rgba(255,255,255,0.3)'}}
+              tickFormatter={(v) => `${(v/1000).toFixed(0)}k`}
+            />
+            <YAxis 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{fontSize: 9, fill: 'rgba(255,255,255,0.3)'}} 
+            />
+            <Tooltip 
+              contentStyle={{ backgroundColor: '#000', border: '1px solid rgba(255,255,255,0.1)', fontSize: '10px' }}
+              itemStyle={{ color: color }}
+              labelStyle={{ color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}
+            />
+            <Area 
+              type="monotone" 
+              dataKey="value" 
+              stroke={color} 
+              strokeWidth={1.5}
+              fillOpacity={1} 
+              fill={`url(#grad-${title})`} 
+              dot={false}
+              animationDuration={1500}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+};
+
+const MetricsView: React.FC<{ modelId: string }> = ({ modelId }) => {
+  const [metrics, setMetrics] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`http://${window.location.hostname}:8000/api/metrics/${modelId}`)
+      .then(res => res.json())
+      .then(data => {
+        setMetrics(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Error fetching metrics:", err);
+        setLoading(false);
+      });
+  }, [modelId]);
+
+  if (loading) return (
+    <div className="h-96 flex flex-col items-center justify-center space-y-4">
+      <div className="w-8 h-8 border-2 border-fg/20 border-t-fg rounded-full animate-spin" />
+      <span className="text-[10px] text-sub uppercase tracking-widest animate-pulse">Parsing Event Streams...</span>
+    </div>
+  );
+
+  if (!metrics || metrics.error) return (
+    <div className="h-96 flex items-center justify-center">
+      <span className="text-[10px] text-sub uppercase tracking-widest">{metrics?.error || "Analytics unavailable"}</span>
+    </div>
+  );
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-700 pb-12">
+      <MetricChart title="Training Reward" data={metrics.reward} color="#fff" />
+      <MetricChart title="Success Rate" data={metrics.success_rate} color="#fff" />
+      <MetricChart title="Learning Loss" data={metrics.loss} color="#fff" />
+      <MetricChart title="Policy Entropy" data={metrics.entropy} color="#fff" />
+    </div>
+  );
+};
 
 const ACTION_LABELS = [
   'Turn Left',
@@ -178,9 +277,9 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
   const [actionHistory, setActionHistory] = useState<number[]>(new Array(7).fill(0));
   const [successCount, setSuccessCount] = useState(0);
   const [episodeCount, setEpisodeCount] = useState(0);
-  
-  const [isLive, setIsLive] = useState(true);
+  const [viewMode, setViewMode] = useState<'live' | 'replay' | 'metrics'>('live');
   const [history, setHistory] = useState<EpisodeRecord[]>([]);
+
   const [currentEpisodeIndex, setCurrentEpisodeIndex] = useState(0);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [currentRecordingSteps, setCurrentRecordingSteps] = useState<StepData[]>([]);
@@ -219,8 +318,8 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
           setGridSize([data.full_grid.length, data.full_grid[0].length]);
         }
 
-        setIsLive(currentIsLive => {
-          if (currentIsLive) {
+        setViewMode(currentMode => {
+          if (currentMode === 'live') {
             setFrame(data.frame);
             setTelemetry({
               action: data.action, reward: data.reward, done: data.done,
@@ -231,11 +330,11 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
             });
             
             // Update live spatial data
-            setPath(prev => [...prev, data.agent_pos]);
+            setPath(prev => [...prev, data.agent_pos as [number, number]]);
             const posKey = `${data.agent_pos[0]},${data.agent_pos[1]}`;
             setHeatmap(prev => ({ ...prev, [posKey]: (prev[posKey] || 0) + 1 }));
           }
-          return currentIsLive;
+          return currentMode;
         });
 
         setCurrentRecordingSteps(prev => {
@@ -266,7 +365,7 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
   }, [modelId, episodeCount]);
 
   useEffect(() => {
-    if (!isLive && history[currentEpisodeIndex]) {
+    if (viewMode === 'replay' && history[currentEpisodeIndex]) {
       const episode = history[currentEpisodeIndex];
       const step = episode.steps[currentStepIndex];
       if (step) {
@@ -282,7 +381,7 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
         setPath(episode.steps.slice(0, currentStepIndex + 1).map(s => s.agent_pos));
       }
     }
-  }, [isLive, currentEpisodeIndex, currentStepIndex, history]);
+  }, [viewMode, currentEpisodeIndex, currentStepIndex, history]);
 
   const successRate = episodeCount > 0 ? ((successCount / episodeCount) * 100).toFixed(1) : "0.0";
 
@@ -293,24 +392,32 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
         <div className="flex justify-between items-end border-b border-border pb-4">
           <div className="flex bg-accent-bg p-1 rounded">
             <button 
-              onClick={() => { setIsLive(true); setPath([]); }}
-              className={`px-4 py-1 text-[10px] font-bold tracking-widest transition-all ${isLive ? 'bg-fg text-bg' : 'text-sub hover:text-fg'}`}
+              onClick={() => { setViewMode('live'); setPath([]); }}
+              className={`px-4 py-1 text-[10px] font-bold tracking-widest transition-all ${viewMode === 'live' ? 'bg-fg text-bg' : 'text-sub hover:text-fg'}`}
             >LIVE</button>
             <button 
-              onClick={() => setIsLive(false)}
-              className={`px-4 py-1 text-[10px] font-bold tracking-widest transition-all ${!isLive ? 'bg-fg text-bg' : 'text-sub hover:text-fg'}`}
+              onClick={() => setViewMode('replay')}
+              className={`px-4 py-1 text-[10px] font-bold tracking-widest transition-all ${viewMode === 'replay' ? 'bg-fg text-bg' : 'text-sub hover:text-fg'}`}
             >REPLAY</button>
+            <button 
+              onClick={() => setViewMode('metrics')}
+              className={`px-4 py-1 text-[10px] font-bold tracking-widest transition-all ${viewMode === 'metrics' ? 'bg-fg text-bg' : 'text-sub hover:text-fg'}`}
+            >METRICS</button>
           </div>
-          
+
           <div className="flex gap-4 items-center">
-            <button 
-              onClick={() => setShowPath(!showPath)}
-              className={`text-[10px] font-bold tracking-widest px-3 py-1 border transition-all ${showPath ? 'bg-fg text-bg border-fg' : 'text-sub border-border hover:border-sub'}`}
-            >PATH</button>
-            <button 
-              onClick={() => setShowHeatmap(!showHeatmap)}
-              className={`text-[10px] font-bold tracking-widest px-3 py-1 border transition-all ${showHeatmap ? 'bg-fg text-bg border-fg' : 'text-sub border-border hover:border-sub'}`}
-            >HEATMAP</button>
+            {viewMode !== 'metrics' && (
+              <>
+                <button 
+                  onClick={() => setShowPath(!showPath)}
+                  className={`text-[10px] font-bold tracking-widest px-3 py-1 border transition-all ${showPath ? 'bg-fg text-bg border-fg' : 'text-sub border-border hover:border-sub'}`}
+                >PATH</button>
+                <button 
+                  onClick={() => setShowHeatmap(!showHeatmap)}
+                  className={`text-[10px] font-bold tracking-widest px-3 py-1 border transition-all ${showHeatmap ? 'bg-fg text-bg border-fg' : 'text-sub border-border hover:border-sub'}`}
+                >HEATMAP</button>
+              </>
+            )}
           </div>
 
           <div className="text-right">
@@ -319,37 +426,41 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
           </div>
         </div>
 
-        <div className="relative aspect-square border border-border bg-bg p-4 group">
-          {frame ? (
-            <>
-              <img src={`data:image/jpeg;base64,${frame}`} className="w-full h-full object-contain pixelated transition-opacity duration-500" alt="Stream" />
-              <SpatialOverlay 
-                path={path} 
-                heatmap={heatmap} 
-                gridSize={gridSize} 
-                visible={{ path: showPath, heatmap: showHeatmap }} 
-              />
-            </>
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-xs text-sub uppercase tracking-widest animate-pulse">Initializing Latent Stream...</div>
-          )}
-          {!isLive && <div className="absolute top-8 left-8 text-[10px] bg-fg text-bg px-2 py-1 font-bold tracking-tighter">REPLAY_BUFFER_ACTIVE</div>}
-        </div>
+        {viewMode === 'metrics' && <MetricsView modelId={modelId} />}
+        
+        {viewMode !== 'metrics' && (
+          <React.Fragment>
+            <div className="relative aspect-square border border-border bg-bg p-4 group">
+              {frame ? (
+                <React.Fragment>
+                  <img src={`data:image/jpeg;base64,${frame}`} className="w-full h-full object-contain pixelated transition-opacity duration-500" alt="Stream" />
+                  <SpatialOverlay 
+                    path={path} 
+                    heatmap={heatmap} 
+                    gridSize={gridSize} 
+                    visible={{ path: showPath, heatmap: showHeatmap }} 
+                  />
+                </React.Fragment>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xs text-sub uppercase tracking-widest animate-pulse">Initializing Latent Stream...</div>
+              )}
+              {viewMode === 'replay' && <div className="absolute top-8 left-8 text-[10px] bg-fg text-bg px-2 py-1 font-bold tracking-tighter">REPLAY_BUFFER_ACTIVE</div>}
+            </div>
 
-        {!isLive && history.length > 0 && (
-          <div className="space-y-6 animate-in slide-in-from-top-2 duration-500">
-            <input 
-              type="range" min="0" max={(history[currentEpisodeIndex]?.steps.length || 1) - 1}
-              value={currentStepIndex} onChange={(e) => setCurrentStepIndex(Number(e.target.value))}
-              className="w-full h-px bg-border appearance-none cursor-none accent-fg"
-            />
-            <div className="flex justify-between items-center text-[10px] text-sub uppercase tracking-widest">
-              <button onClick={() => setCurrentStepIndex(p => Math.max(0, p-1))} className="hover:text-fg flex items-center gap-1"><ChevronLeft size={12}/> Prev</button>
-              <div className="flex items-baseline gap-4">
-                <select 
-                  className="bg-bg border-none outline-none font-bold text-fg cursor-none"
-                  value={currentEpisodeIndex} onChange={e => {setCurrentEpisodeIndex(Number(e.target.value)); setCurrentStepIndex(0);}}
-                >
+            {viewMode === 'replay' && history.length > 0 && (
+              <div className="space-y-6 animate-in slide-in-from-top-2 duration-500">
+                <input 
+                  type="range" min="0" max={(history[currentEpisodeIndex]?.steps.length || 1) - 1}
+                  value={currentStepIndex} onChange={(e) => setCurrentStepIndex(Number(e.target.value))}
+                  className="w-full h-px bg-border appearance-none cursor-none accent-fg"
+                />
+                <div className="flex justify-between items-center text-[10px] text-sub uppercase tracking-widest">
+                  <button onClick={() => setCurrentStepIndex(p => Math.max(0, p-1))} className="hover:text-fg flex items-center gap-1"><ChevronLeft size={12}/> Prev</button>
+                  <div className="flex items-baseline gap-4">
+                    <select 
+                      className="bg-bg border-none outline-none font-bold text-fg cursor-none"
+                      value={currentEpisodeIndex} onChange={e => {setCurrentEpisodeIndex(Number(e.target.value)); setCurrentStepIndex(0);}}>
+
                   {history.map((ep, i) => <option key={i} value={i}>Episode {ep.id}</option>)}
                 </select>
                 <span>Step {currentStepIndex + 1} / {history[currentEpisodeIndex]?.totalSteps}</span>
@@ -358,7 +469,9 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
             </div>
           </div>
         )}
-      </div>
+      </React.Fragment>
+    )}
+  </div>
 
       {/* Telemetry (Side) */}
       <div className="lg:col-span-5 flex flex-col gap-12">
@@ -396,7 +509,7 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
           <div className="space-y-1 max-h-[200px] overflow-y-auto pr-4">
             {history.map((res, i) => (
               <div 
-                key={i} onClick={() => { setIsLive(false); setCurrentEpisodeIndex(i); setCurrentStepIndex(0); }}
+                key={i} onClick={() => { setViewMode('replay'); setCurrentEpisodeIndex(i); setCurrentStepIndex(0); }}
                 className="group flex justify-between items-center py-2 border-b border-border/50 cursor-none hover:bg-accent-bg transition-colors px-2"
               >
                 <span className="text-[10px] font-bold tracking-tighter">[{res.finalReward > 0 ? 'SUCC' : 'FAIL'}] EP_{res.id}</span>
