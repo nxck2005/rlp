@@ -112,12 +112,12 @@ function App() {
         {/* Navigation / Header */}
         <nav className="flex justify-between items-baseline mb-24 border-b border-border pb-8">
           <div className="flex items-baseline gap-4">
-            <h1 className="text-2xl m-0 font-heading">Agent Visualiser</h1>
-            <span className="text-[10px] font-bold text-sub tracking-[0.3em] uppercase">Phase_03</span>
+            <h1 className="text-2xl m-0 font-heading">RL Agent Visualiser</h1>
+            <span className="text-[10px] font-bold text-sub tracking-[0.3em] uppercase">1.1b</span>
           </div>
           <div className="flex gap-8 text-[10px] font-bold uppercase tracking-widest text-sub">
-            <a href="https://github.com/nxck2005/rlp" className="hover:text-fg transition-colors">Source_Code</a>
-            <a href="https://github.com/nxck2005" className="hover:text-fg transition-colors">Archive</a>
+            <a href="https://github.com/nxck2005/rlp" className="hover:text-fg transition-colors">Source</a>
+            <a href="https://github.com/nxck2005" className="hover:text-fg transition-colors">Profile</a>
           </div>
         </nav>
 
@@ -203,10 +203,10 @@ function App() {
 
         {/* Footer */}
         <footer className="mt-32 pt-12 border-t border-border flex justify-between items-center text-[10px] uppercase tracking-[0.2em] text-sub">
-          <span>React 19 x SB3 Contrib</span>
+          <span>Running on React</span>
           <div className="flex gap-8">
-            <span>Laboratory Environment</span>
-            <span>2026_Edition</span>
+            <span>CSE4037</span>
+            <span>J Component Project</span>
           </div>
         </footer>
       </div>

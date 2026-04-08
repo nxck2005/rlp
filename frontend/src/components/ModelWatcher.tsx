@@ -132,7 +132,7 @@ const SpatialOverlay: React.FC<{
         return (
           <div 
             key={`heat-${i}`} 
-            style={{ backgroundColor: `rgba(255, 255, 255, ${opacity})` }}
+            style={{ backgroundColor: `rgba(255, 165, 0, ${opacity})` }}
             className="w-full h-full border border-white/5"
           />
         );
