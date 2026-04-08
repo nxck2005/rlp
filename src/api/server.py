@@ -29,30 +29,33 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS_DIR = os.path.join(BASE_DIR, "models")
 
 MODEL_CONFIG = {
-    # 1. DQN APPROACHES (Pixel-based)
+    # 1. DQN APPROACHES (Pixel-based / Mixed)
     "dqn_baseline": {
         "path": os.path.join(MODELS_DIR, "dqn_final"),
         "env": "MiniGrid-DoorKey-5x5-v0",
         "type": "DQN",
-        "obs_type": "Pixel"
+        "obs_type": "Flat"
     },
     "dqn_framestack": {
-        "path": os.path.join(MODELS_DIR, "dqn_framestack"),
+        "path": os.path.join(MODELS_DIR, "keydqn_framestack/DQN_Pixels_DoorKey5x5_FrameStack"),
         "env": "MiniGrid-DoorKey-5x5-v0",
         "type": "DQN",
-        "obs_type": "Pixel"
+        "obs_type": "Pixel",
+        "use_pixel_wrapper": True,
+        "n_stack": 4
     },
     "dqn_custom_cnn": {
-        "path": os.path.join(MODELS_DIR, "dqn_custom_cnn"),
-        "env": "MiniGrid-DoorKey-5x5-v0",
+        "path": os.path.join(BASE_DIR, "prelim/qlearning/models/dqn_baseline/dqn_8x8_model"),
+        "env": "MiniGrid-DoorKey-8x8-v0",
         "type": "DQN",
         "obs_type": "Pixel"
     },
     "dqn_curriculum": {
-        "path": os.path.join(MODELS_DIR, "dqn_curriculum"),
+        "path": os.path.join(MODELS_DIR, "keydqn_cur/S2_final"),
         "env": "MiniGrid-DoorKey-5x5-v0",
         "type": "DQN",
-        "obs_type": "Pixel"
+        "obs_type": "Pixel",
+        "use_pixel_wrapper": True
     },
     
     # 2. PPO VISUAL (Pixel-based)
@@ -63,8 +66,8 @@ MODEL_CONFIG = {
         "obs_type": "Pixel"
     },
     "ppo_curriculum": {
-        "path": os.path.join(MODELS_DIR, "S3_weights"),
-        "env": "MiniGrid-DoorKey-5x5-v0",
+        "path": os.path.join(MODELS_DIR, "curriculum/S3_weights"),
+        "env": "MiniGrid-DoorKey-8x8-v0",
         "type": "PPO",
         "obs_type": "Pixel"
     },
@@ -77,7 +80,7 @@ MODEL_CONFIG = {
         "obs_type": "Flat"
     },
     "ppo_flat_cur": {
-        "path": os.path.join(MODELS_DIR, "ppo_flat_cur"),
+        "path": os.path.join(BASE_DIR, "Phase2_Model"),
         "env": "MiniGrid-DoorKey-5x5-v0",
         "type": "PPO",
         "obs_type": "Flat"
@@ -99,8 +102,8 @@ MODEL_CONFIG = {
 
     # 5. REPP2 (ADVANCED - Flat)
     "repp2_4stage": {
-        "path": os.path.join(MODELS_DIR, "repp2/fast_4_sequence"),
-        "env": "MiniGrid-MultiRoom-N2-S4-v0",
+        "path": os.path.join(BASE_DIR, "prelim/repp2/models/fast_3_target"),
+        "env": "MiniGrid-DoorKey-8x8-v0",
         "type": "RPPO",
         "obs_type": "Flat"
     }
@@ -139,7 +142,9 @@ async def websocket_endpoint(websocket: WebSocket, model_id: str):
             env_id=config["env"],
             model_path=full_path,
             model_type=config["type"],
-            obs_type=config["obs_type"]
+            obs_type=config["obs_type"],
+            use_pixel_wrapper=config.get("use_pixel_wrapper", False),
+            n_stack=config.get("n_stack")
         )
         logger.info(f"Watcher initialized for {model_id}. Starting stream...")
         

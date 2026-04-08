@@ -1,4 +1,8 @@
-from turtle import delay
+import multiprocessing
+try:
+    multiprocessing.set_start_method('fork', force=True)
+except RuntimeError:
+    pass
 
 import gymnasium as gym
 import os
@@ -37,7 +41,7 @@ if __name__ == "__main__":
         print(f"\n>>> Starting Stage: {stage['name']} | Goal: {stage['steps']} steps")
         
         
-        envs = SubprocVecEnv([make_env(stage["id"], i) for i in range(NUM_CPU)])
+        envs = SubprocVecEnv([make_env(stage["id"], i) for i in range(NUM_CPU)], start_method="fork")
 
         if model is None:
             model = RecurrentPPO(
