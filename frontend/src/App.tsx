@@ -30,18 +30,8 @@ const APPROACHES: Approach[] = [
     ]
   },
   {
-    id: 'ppo_pixel',
-    title: 'PPO VISUAL',
-    subtitle: 'Pixel-Based Proximal Policy Optimization',
-    icon: Target,
-    variants: [
-      { id: 'ppo_baseline', name: 'Visual Baseline', desc: 'On-policy stability for raw pixel observations.' },
-      { id: 'ppo_curriculum', name: 'Visual Curriculum', desc: 'Staged navigation training for vision-based agents.' },
-    ]
-  },
-  {
     id: 'ppo_symbolic',
-    title: 'PPO SYMBOLIC',
+    title: 'PPO',
     subtitle: 'Fast Convergence / Logical Extraction',
     icon: Brain,
     variants: [
@@ -51,21 +41,21 @@ const APPROACHES: Approach[] = [
   },
   {
     id: 'rppo',
-    title: 'RECURRENT PPO',
+    title: 'RECURRENT PPO - 3 STAGE',
     subtitle: 'LSTM-Driven / POMDP Solutions',
     icon: History,
     variants: [
       { id: 'rppo_baseline', name: 'Recurrent 8x8', desc: 'LSTM memory for 8x8 maps where goals are hidden.' },
       { id: 'rppo_curriculum', name: 'Recurrent Curriculum', desc: '3-stage transfer learning for complex spatial logic.' },
     ]
-  },
+  }, // remove reppo2 if needed
   {
     id: 'repp2',
-    title: 'REPP2 ADVANCED',
-    subtitle: 'Parallelized / Multi-Stage Sequence',
+    title: 'REPP0 2 - 4 STAGE',
+    subtitle: 'Multi-Stage Sequence',
     icon: Cpu,
     variants: [
-      { id: 'repp2_4stage', name: '4-Stage Parallel', desc: 'SubprocVecEnv accelerated training across 4 CPU cores.' },
+      { id: 'repp2_4stage', name: '4-Stage', desc: 'Most advanced 4 stage problem.' },
     ]
   }
 ]
