@@ -152,9 +152,7 @@ const MetricsView: React.FC<{ modelId: string }> = ({ modelId }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <MetricChart title="Training Reward" data={metrics.reward} color="#fff" />
-        <MetricChart title="Success Rate" data={metrics.success_rate} color="#fff" />
         <MetricChart title="Learning Loss" data={metrics.loss} color="#fff" />
-        <MetricChart title="Policy Entropy" data={metrics.entropy} color="#fff" />
       </div>
     </div>
   );
