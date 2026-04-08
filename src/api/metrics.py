@@ -3,17 +3,21 @@ import glob
 import numpy as np
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
-def extract_metrics(log_dir, max_points=200):
+# --- CONFIGURATION ---
+# Default smoothing factor (0.0 = no smoothing, 0.99 = very smooth)
+SMOOTHING_FACTOR = 0.85
+MAX_POINTS = 200
+
+def extract_metrics(log_dir, max_points=MAX_POINTS, smoothing=SMOOTHING_FACTOR):
     """
     Recursively finds ALL event files in log_dir, aggregates data, 
-    and returns a step-sorted list for each metric.
+    applies smoothing (EMA), and returns a step-sorted list.
     """
     event_files = glob.glob(os.path.join(log_dir, "**", "events.out.tfevents.*"), recursive=True)
         
     if not event_files:
         return {"error": f"No event files found in {log_dir}"}
 
-    # Mapping of standard keys we want to show
     mapping = {
         "reward": ["rollout/ep_rew_mean", "train/reward", "main/reward", "reward"],
         "success_rate": ["rollout/success_rate", "main/success_rate", "train/success_rate", "success_rate"],
@@ -23,7 +27,6 @@ def extract_metrics(log_dir, max_points=200):
 
     results = {k: [] for k in mapping.keys()}
     
-    # Process each event file and aggregate
     for event_file in event_files:
         try:
             acc = EventAccumulator(event_file, size_guidance={'scalars': 0})
@@ -39,16 +42,14 @@ def extract_metrics(log_dir, max_points=200):
         except Exception as e:
             print(f"Error reading {event_file}: {e}")
 
-    # For each metric, sort by step and downsample
     final_results = {}
     for key, data in results.items():
         if not data:
             continue
             
-        # Sort by step
         data.sort(key=lambda x: x["step"])
         
-        # Deduplicate steps (take the last value for a given step if multiple files overlap)
+        # Deduplicate steps
         unique_data = []
         if data:
             unique_data.append(data[0])
@@ -58,6 +59,17 @@ def extract_metrics(log_dir, max_points=200):
                 else:
                     unique_data.append(data[i])
         
+        # Apply Smoothing (Exponential Moving Average)
+        if smoothing > 0 and len(unique_data) > 0:
+            smoothed = []
+            last = unique_data[0]["value"]
+            for point in unique_data:
+                # Formula: smoothed = weight * last + (1 - weight) * current
+                de_noised = last * smoothing + (1 - smoothing) * point["value"]
+                smoothed.append({"step": point["step"], "value": de_noised})
+                last = de_noised
+            unique_data = smoothed
+
         # Downsample
         if len(unique_data) > max_points:
             indices = np.linspace(0, len(unique_data) - 1, max_points).astype(int)
@@ -70,9 +82,7 @@ def extract_metrics(log_dir, max_points=200):
 def get_log_dir_for_model(model_id, base_dir, models_dir):
     """
     Finds the log directory associated with a specific model ID.
-    Updated based on actual filesystem structure.
     """
-    # Define mapping based on verified paths
     log_map = {
         "dqn_baseline": os.path.join(base_dir, "logs/keydqn_flat"),
         "dqn_framestack": os.path.join(base_dir, "logs/keydqn_framestack"),

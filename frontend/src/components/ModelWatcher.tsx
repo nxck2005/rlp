@@ -107,10 +107,11 @@ const MetricChart: React.FC<{ title: string, data: any[], color: string }> = ({ 
 const MetricsView: React.FC<{ modelId: string }> = ({ modelId }) => {
   const [metrics, setMetrics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [smoothing, setSmoothing] = useState(0.85);
 
   useEffect(() => {
     setLoading(true);
-    fetch(`http://${window.location.hostname}:8000/api/metrics/${modelId}`)
+    fetch(`http://${window.location.hostname}:8000/api/metrics/${modelId}?smoothing=${smoothing}`)
       .then(res => res.json())
       .then(data => {
         setMetrics(data);
@@ -120,9 +121,9 @@ const MetricsView: React.FC<{ modelId: string }> = ({ modelId }) => {
         console.error("Error fetching metrics:", err);
         setLoading(false);
       });
-  }, [modelId]);
+  }, [modelId, smoothing]);
 
-  if (loading) return (
+  if (loading && !metrics) return (
     <div className="h-96 flex flex-col items-center justify-center space-y-4">
       <div className="w-8 h-8 border-2 border-fg/20 border-t-fg rounded-full animate-spin" />
       <span className="text-[10px] text-sub uppercase tracking-widest animate-pulse">Parsing Event Streams...</span>
@@ -136,11 +137,25 @@ const MetricsView: React.FC<{ modelId: string }> = ({ modelId }) => {
   );
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-700 pb-12">
-      <MetricChart title="Training Reward" data={metrics.reward} color="#fff" />
-      <MetricChart title="Success Rate" data={metrics.success_rate} color="#fff" />
-      <MetricChart title="Learning Loss" data={metrics.loss} color="#fff" />
-      <MetricChart title="Policy Entropy" data={metrics.entropy} color="#fff" />
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-700 pb-12">
+      <div className="flex flex-col gap-2 max-w-xs">
+        <div className="flex justify-between items-center text-[10px] text-sub uppercase tracking-widest font-bold">
+          <span>De-noising (EMA Smoothing)</span>
+          <span>{smoothing.toFixed(2)}</span>
+        </div>
+        <input 
+          type="range" min="0" max="0.99" step="0.01"
+          value={smoothing} onChange={(e) => setSmoothing(parseFloat(e.target.value))}
+          className="w-full h-px bg-border appearance-none cursor-none accent-fg"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <MetricChart title="Training Reward" data={metrics.reward} color="#fff" />
+        <MetricChart title="Success Rate" data={metrics.success_rate} color="#fff" />
+        <MetricChart title="Learning Loss" data={metrics.loss} color="#fff" />
+        <MetricChart title="Policy Entropy" data={metrics.entropy} color="#fff" />
+      </div>
     </div>
   );
 };
