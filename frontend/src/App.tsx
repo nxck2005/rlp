@@ -48,15 +48,6 @@ const APPROACHES: Approach[] = [
       { id: 'rppo_baseline', name: 'Recurrent 8x8', desc: 'LSTM memory for 8x8 maps where goals are hidden.' },
       { id: 'rppo_curriculum', name: 'Recurrent Curriculum', desc: '3-stage transfer learning for complex spatial logic.' },
     ]
-  }, // remove reppo2 if needed
-  {
-    id: 'repp2',
-    title: 'REPP0 2 - 4 STAGE',
-    subtitle: 'Multi-Stage Sequence',
-    icon: Cpu,
-    variants: [
-      { id: 'repp2_4stage', name: '4-Stage', desc: 'Most advanced 4 stage problem.' },
-    ]
   }
 ]
 

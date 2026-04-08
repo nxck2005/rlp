@@ -309,6 +309,15 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
   const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
+    // ONLY connect if we are NOT in metrics mode
+    if (viewMode === 'metrics') {
+      if (ws.current) {
+        ws.current.close();
+        ws.current = null;
+      }
+      return;
+    }
+
     const url = `ws://${window.location.hostname}:8000/ws/${modelId}`;
     const socket = new WebSocket(url);
     ws.current = socket;
@@ -376,8 +385,10 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
     };
 
     socket.onerror = () => setError("Endpoint Unavailable");
-    return () => socket.close();
-  }, [modelId, episodeCount]);
+    return () => {
+      if (socket) socket.close();
+    };
+  }, [modelId, viewMode, episodeCount]);
 
   useEffect(() => {
     if (viewMode === 'replay' && history[currentEpisodeIndex]) {
@@ -401,9 +412,9 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
   const successRate = episodeCount > 0 ? ((successCount / episodeCount) * 100).toFixed(1) : "0.0";
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 h-full">
+    <div className={`grid grid-cols-1 ${viewMode !== 'metrics' ? 'lg:grid-cols-12' : ''} gap-12 h-full max-w-7xl mx-auto`}>
       {/* Visual Stream (Main) */}
-      <div className="lg:col-span-7 flex flex-col gap-8">
+      <div className={`${viewMode !== 'metrics' ? 'lg:col-span-7' : 'w-full'} flex flex-col gap-8`}>
         <div className="flex justify-between items-end border-b border-border pb-4">
           <div className="flex bg-accent-bg p-1 rounded">
             <button 
@@ -489,51 +500,53 @@ const ModelWatcher: React.FC<ModelWatcherProps> = ({ modelId, name }) => {
   </div>
 
       {/* Telemetry (Side) */}
-      <div className="lg:col-span-5 flex flex-col gap-12">
-        <section>
-          <h4 className="text-[10px] uppercase tracking-[0.2em] text-sub mb-6 border-b border-border pb-2 flex items-center gap-2">
-            <Eye size={12}/> Partial Observation (7x7)
-          </h4>
-          <div className="max-w-[200px]">
-            <AgentEye grid={telemetry?.agent_view} />
-          </div>
-        </section>
+      {viewMode !== 'metrics' && (
+        <div className="lg:col-span-5 flex flex-col gap-12">
+          <section>
+            <h4 className="text-[10px] uppercase tracking-[0.2em] text-sub mb-6 border-b border-border pb-2 flex items-center gap-2">
+              <Eye size={12}/> Partial Observation (7x7)
+            </h4>
+            <div className="max-w-[200px]">
+              <AgentEye grid={telemetry?.agent_view} />
+            </div>
+          </section>
 
-        <section className="flex-grow">
-          <h4 className="text-[10px] uppercase tracking-[0.2em] text-sub mb-6 border-b border-border pb-2 flex items-center gap-2">
-            <BarChart3 size={12}/> Policy Distribution
-          </h4>
-          <div className="h-[180px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={ACTION_LABELS.map((l, i) => ({ name: l, value: actionHistory[i] }))} layout="vertical">
-                <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: 'var(--sub)', fontSize: 9 }} width={80} />
-                <Tooltip cursor={{fill: 'var(--accent-bg)'}} contentStyle={{ backgroundColor: 'var(--bg)', border: '1px solid var(--border)', fontSize: '10px' }} />
-                <Bar dataKey="value" radius={[0, 2, 2, 0]}>
-                  {ACTION_LABELS.map((_, i) => <Cell key={i} fill={i === telemetry?.action ? 'var(--fg)' : 'var(--border)'} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
+          <section className="flex-grow">
+            <h4 className="text-[10px] uppercase tracking-[0.2em] text-sub mb-6 border-b border-border pb-2 flex items-center gap-2">
+              <BarChart3 size={12}/> Policy Distribution
+            </h4>
+            <div className="h-[180px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={ACTION_LABELS.map((l, i) => ({ name: l, value: actionHistory[i] }))} layout="vertical">
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: 'var(--sub)', fontSize: 9 }} width={80} />
+                  <Tooltip cursor={{fill: 'var(--accent-bg)'}} contentStyle={{ backgroundColor: 'var(--bg)', border: '1px solid var(--border)', fontSize: '10px' }} />
+                  <Bar dataKey="value" radius={[0, 2, 2, 0]}>
+                    {ACTION_LABELS.map((_, i) => <Cell key={i} fill={i === telemetry?.action ? 'var(--fg)' : 'var(--border)'} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
 
-        <section>
-          <h4 className="text-[10px] uppercase tracking-[0.2em] text-sub mb-6 border-b border-border pb-2 flex items-center gap-2">
-            <Target size={12}/> Event History
-          </h4>
-          <div className="space-y-1 max-h-[200px] overflow-y-auto pr-4">
-            {history.map((res, i) => (
-              <div 
-                key={i} onClick={() => { setViewMode('replay'); setCurrentEpisodeIndex(i); setCurrentStepIndex(0); }}
-                className="group flex justify-between items-center py-2 border-b border-border/50 cursor-none hover:bg-accent-bg transition-colors px-2"
-              >
-                <span className="text-[10px] font-bold tracking-tighter">[{res.finalReward > 0 ? 'SUCC' : 'FAIL'}] EP_{res.id}</span>
-                <span className="text-[10px] text-sub font-mono">{res.totalSteps} steps</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
+          <section>
+            <h4 className="text-[10px] uppercase tracking-[0.2em] text-sub mb-6 border-b border-border pb-2 flex items-center gap-2">
+              <Target size={12}/> Event History
+            </h4>
+            <div className="space-y-1 max-h-[200px] overflow-y-auto pr-4">
+              {history.map((res, i) => (
+                <div 
+                  key={i} onClick={() => { setViewMode('replay'); setCurrentEpisodeIndex(i); setCurrentStepIndex(0); }}
+                  className="group flex justify-between items-center py-2 border-b border-border/50 cursor-none hover:bg-accent-bg transition-colors px-2"
+                >
+                  <span className="text-[10px] font-bold tracking-tighter">[{res.finalReward > 0 ? 'SUCC' : 'FAIL'}] EP_{res.id}</span>
+                  <span className="text-[10px] text-sub font-mono">{res.totalSteps} steps</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 };
