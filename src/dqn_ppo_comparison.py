@@ -23,17 +23,19 @@ models = {
     'DQN Baseline': 'src/logs/keydqn_flat/dqn_final_1/',
     'DQN Curriculum': 'src/logs/keydqn_cur/S2_DoorKey5x5_1/',
     'PPO Baseline': 'src/logs/keyppo_flat/PPO_Flat_DoorKey5x5_1/',
-    'PPO Curriculum': 'src/curriculum_logs/Phase2_DoorKey_0/'
+    'PPO Curriculum': 'src/curriculum_logs/Phase2_DoorKey_0/',
+    'RPPO Baseline': 'src/logs/rppo_baseline/RecurrentPPO_1/',
+    'RPPO Curriculum': 'src/prelim/reppo/logs/rppo_curriculum/RecurrentPPO_0/'
 }
 
 metrics = {
-    'rollout/ep_len_mean': 'Episode Length (DQN vs PPO).png',
-    'rollout/ep_rew_mean': 'Episode Reward (DQN vs PPO).png'
+    'rollout/ep_len_mean': 'Episode Length (DQN vs PPO vs RPPO).png',
+    'rollout/ep_rew_mean': 'Episode Reward (DQN vs PPO vs RPPO).png'
 }
 
 titles = {
-    'rollout/ep_len_mean': 'Comparison: Mean Episode Length',
-    'rollout/ep_rew_mean': 'Comparison: Mean Episode Reward'
+    'rollout/ep_len_mean': 'Comparison: Mean Episode Length (DQN vs PPO vs RPPO)',
+    'rollout/ep_rew_mean': 'Comparison: Mean Episode Reward (DQN vs PPO vs RPPO)'
 }
 
 for metric, save_name in metrics.items():
