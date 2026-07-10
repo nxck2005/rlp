@@ -1,4 +1,4 @@
-# rlp: Reinforcement Learning Laboratory (CSE4037)
+# rlp: Reinforcement Learning Laboratory
 
 A comprehensive study of **Curriculum Learning** versus **Baseline Training** within the `MiniGrid` ecosystem. This project implements and visualises various RL architectures, ranging from standard DQNs to advanced parallelised Recurrent PPO agents.
 
